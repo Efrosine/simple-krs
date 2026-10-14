@@ -46,7 +46,7 @@
                         <thead class="bg-slate-950 text-xs uppercase tracking-wide text-slate-400"><tr><th class="px-5 py-3">Kode</th><th class="px-5 py-3">Mata kuliah</th><th class="px-5 py-3">Dosen</th><th class="px-5 py-3">Jadwal</th><th class="px-5 py-3">SKS</th><th class="px-5 py-3">Sisa / Kuota</th><th class="px-5 py-3">Aksi</th></tr></thead>
                         <tbody id="course-rows" class="divide-y divide-slate-800">
                             @foreach ($courses as $course)
-                                <tr data-course-id="{{ $course->id }}">
+                                <tr data-course-id="{{ $course->id }}" data-capacity="{{ $course->capacity }}">
                                     <td class="whitespace-nowrap px-5 py-4 font-mono text-sky-300">{{ $course->course_code }}</td>
                                     <td class="px-5 py-4 font-medium">{{ $course->title }}</td>
                                     <td class="px-5 py-4 text-slate-300">{{ $course->lecturer }}</td>
@@ -56,10 +56,12 @@
                                     <td class="px-5 py-4">
                                         @if ($course->enrollments->isNotEmpty())
                                             <form method="POST" action="{{ route('classes.drop', $course) }}">@csrf @method('DELETE')<button class="rounded-lg border border-rose-800 px-3 py-2 text-rose-200 hover:bg-rose-950">Lepas</button></form>
-                                        @elseif ($course->remaining_seats > 0)
-                                            <form method="POST" action="{{ route('classes.enroll', $course) }}">@csrf<button class="rounded-lg bg-sky-400 px-3 py-2 font-semibold text-slate-950 hover:bg-sky-300">Ambil kelas</button></form>
-                                        @else
+                                        @elseif ($course->remaining_seats > 0 && auth()->user()->role === 'student')
+                                            <form method="POST" action="{{ route('classes.enroll', $course) }}">@csrf<input type="hidden" name="idempotency_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}"><button class="rounded-lg bg-sky-400 px-3 py-2 font-semibold text-slate-950 hover:bg-sky-300">Ambil kelas</button></form>
+                                        @elseif ($course->remaining_seats < 1)
                                             <span class="text-xs text-rose-300">Penuh</span>
+                                        @else
+                                            <span class="text-xs text-slate-500">Khusus mahasiswa</span>
                                         @endif
                                     </td>
                                 </tr>
@@ -79,9 +81,17 @@
 
                 row.querySelector('[data-enrolled-count]').textContent = payload.enrolled_count;
                 row.querySelector('[data-remaining-seats]').textContent = payload.remaining_seats;
-                row.querySelectorAll('form button').forEach((button) => {
-                    button.disabled = payload.remaining_seats < 1 && button.textContent.trim() === 'Ambil kelas';
-                });
+                const total = document.getElementById('total-remaining-seats');
+                if (total) {
+                    let sum = 0;
+                    document.querySelectorAll('[data-remaining-seats]').forEach((seat) => sum += Number(seat.textContent));
+                    total.textContent = sum;
+                }
+                if (payload.remaining_seats < 1) {
+                    row.querySelectorAll('form[action*="/enroll"] button').forEach((button) => {
+                        if (button.textContent.trim() === 'Ambil kelas') button.disabled = true;
+                    });
+                }
             });
         }
     </script>
