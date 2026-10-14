@@ -80,3 +80,46 @@ These credentials are for local development only. Do not use them in a deployed 
 ### Scope limits
 
 The enrollment transaction protects capacity on a single database connection that supports row-level locking. SQLite is suitable for local feature checks, but does not provide the same row-locking behavior as PostgreSQL or MySQL. Distributed database replication and cross-node consistency remain future phases.
+
+
+## Phase 5: PostgreSQL primary and replica
+
+Phase 5 keeps the default `pgsql` connection pointed at the primary. All enrollment transactions, session/cache/queue database operations, and other writes continue to use the primary. Only the class catalog's course list and enrollment counts use the dedicated `pgsql_replica` connection.
+
+For a local PostgreSQL replication demo, configure `.env`:
+
+```dotenv
+DB_CONNECTION=pgsql
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_DATABASE=simple_krs
+DB_USERNAME=postgres
+DB_PASSWORD=your-primary-password
+
+DB_READ_HOST=127.0.0.1
+DB_READ_PORT=5433
+DB_READ_USERNAME=postgres
+DB_READ_PASSWORD=your-replica-password
+DB_READ_TIMEOUT=2
+```
+
+Adjust hostnames and ports to match the Docker network. When Laravel runs in a container attached to `db-net`, use the service name and internal port (for example `postgres:5432` and `postgres-replica:5432`), not the host-published ports.
+
+Run migrations and seeders against the primary only:
+
+```bash
+php artisan config:clear
+php artisan migrate --seed
+```
+
+The catalog falls back to the primary if the replica query fails and logs a warning. The student's enrolled-course list is read from the primary to preserve read-your-writes behavior. Catalog enrollment counts can temporarily lag behind because they are intentionally served from the replica. Enrollment capacity, SKS, schedule-conflict validation, and all writes remain on the primary.
+
+### Phase 5 manual verification
+
+- Confirm the primary is writable and the replica is in recovery/read-only mode.
+- Open the catalog and inspect PostgreSQL activity or query logs to confirm catalog queries reach the replica.
+- Enroll in a class and immediately confirm it appears in “KRS saya” and contributes to the student's SKS total, even if the replica is delayed.
+- Introduce a controlled replication delay and confirm catalog counts may lag while enrollment validation remains safe.
+- Stop the replica. The catalog should fall back to the primary; a warning should appear in the Laravel log.
+- Start the replica again and confirm streaming replication resumes.
+- No test files are added, per project instruction.
