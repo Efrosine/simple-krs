@@ -1,12 +1,38 @@
 <?php
 
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ClassCatalogController;
 use App\Events\DemoMessage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::view('/', 'welcome');
+Route::get('/', function () {
+    return redirect()->route('classes.index');
+});
 
-Route::view('/socket-demo', 'socket-demo');
+Route::view('/socket-demo', 'socket-demo')->name('socket-demo');
+
+Route::middleware('guest')->group(function () {
+    Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+    Route::post('/login', [AuthController::class, 'login'])->name('login.store');
+    Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
+    Route::post('/register', [AuthController::class, 'register'])->name('register.store');
+});
+
+Route::middleware('auth')->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+    Route::get('/classes', [ClassCatalogController::class, 'index'])->name('classes.index');
+
+    Route::get('/admin', function (Request $request) {
+        abort_unless($request->user()->role === 'admin', 403);
+
+        return view('admin.index', [
+            'studentCount' => \App\Models\User::where('role', 'student')->count(),
+            'courseCount' => \App\Models\Course::count(),
+            'enrollmentCount' => \App\Models\Enrollment::count(),
+        ]);
+    })->name('admin.index');
+});
 
 Route::post('/socket-demo/publish', function (Request $request) {
     $validated = $request->validate([

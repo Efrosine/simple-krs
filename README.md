@@ -4,81 +4,60 @@ A minimal Laravel foundation for the Simple KRS distributed-systems project.
 
 ## Phase 1: Reverb / WebSocket proof of concept
 
-This phase adds Laravel Reverb, Laravel Echo, and a small public-channel demo. It deliberately does not implement KRS enrollment, authentication, database replication, or production hardening.
+Phase 1 adds Laravel Reverb, Laravel Echo, and a small public-channel demo at `/socket-demo`. Open the page in two tabs, confirm both show **Terhubung**, and send a message to see it arrive in both tabs without refreshing.
+
+## Phase 2: Authentication and class catalog
+
+Phase 2 adds session-based login, student registration, a basic admin role, a seeded class catalog, and the initial relational schema for enrollments.
 
 ### Requirements
 
 - PHP 8.3+
 - Composer
 - Node.js and npm
-- SQLite (the default local database)
+- SQLite for local development (the default configuration)
 
 ### Install locally
 
 ```bash
 git clone https://github.com/Efrosine/simple-krs.git
 cd simple-krs
-git switch feature/phase-1-reverb-socket
+git switch feature/phase-2-auth-catalog
 composer install
 composer update laravel/reverb
 npm install
 cp .env.example .env
 php artisan key:generate
-php artisan migrate
-```
-
-The Composer update resolves Reverb and writes the matching local lock file because this phase introduces a Composer dependency. Run it once after checking out this branch.
-
-The committed Reverb config is already present. Do not run `php artisan reverb:install` unless you intentionally want to regenerate it; that command may overwrite configuration. Check that the local `.env` has the values below:
-
-```dotenv
-BROADCAST_CONNECTION=reverb
-REVERB_APP_ID=local-app-id
-REVERB_APP_KEY=local-app-key
-REVERB_APP_SECRET=local-app-secret
-REVERB_HOST=127.0.0.1
-REVERB_PORT=8080
-REVERB_SCHEME=http
-VITE_REVERB_APP_KEY=${REVERB_APP_KEY}
-VITE_REVERB_HOST=${REVERB_HOST}
-VITE_REVERB_PORT=${REVERB_PORT}
-VITE_REVERB_SCHEME=${REVERB_SCHEME}
-```
-
-Build the frontend once:
-
-```bash
+php artisan migrate --seed
 npm run build
 ```
 
-Open three terminals from the project directory:
+If the local `.env` already exists from Phase 1, keep it and do not overwrite it. Keep the Reverb settings from that phase if you want to use `/socket-demo`.
 
-**Terminal 1: Laravel**
+Run the app:
+
 ```bash
-php artisan serve
+composer run dev
 ```
 
-**Terminal 2: Reverb WebSocket server**
-```bash
-php artisan reverb:start --debug
-```
+Visit `http://localhost:8000` (or the URL printed by Laravel).
 
-**Terminal 3: Optional Vite dev server** (use this instead of rebuilding every frontend edit)
-```bash
-npm run dev
-```
+### Demo accounts
 
-Visit http://127.0.0.1:8000/socket-demo. If using Vite, keep its terminal running. Open the same URL in two browser tabs, confirm both show **Terhubung**, send a message from one tab, and confirm it appears in both tabs without refreshing. Also check the Reverb terminal for the connection and broadcast activity.
+The seeder creates local-only demo accounts:
 
-### Troubleshooting
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@simple-krs.test` | `password` |
+| Student | `student@simple-krs.test` | `password` |
 
-- **Connection refused:** make sure `php artisan reverb:start --debug` is running on port 8080.
-- **Not connected:** clear cached config with `php artisan config:clear`, verify the `REVERB_*` and `VITE_REVERB_*` values in `.env`, then restart Laravel, Reverb, and Vite.
-- **Frontend env changes not picked up:** restart `npm run dev` or run `npm run build` again.
-- **Missing Reverb command:** run `composer update laravel/reverb`, then `php artisan list` and confirm the Reverb commands are available.
+These credentials are for local development only. Do not use them in a deployed environment.
 
-## Scope notes
+### Phase 2 scope
 
-- `/socket-demo` is a development-only proof of concept using a public channel. Do not send personal data.
-- The HTTP endpoint validates the message and broadcasts immediately, so no queue worker is needed for this demo.
+- New registrations are always assigned the `student` role.
+- The admin dashboard is protected by a role check.
+- The class catalog shows schedule, lecturer, credits, capacity, and remaining seats.
+- Enrollment tables are prepared with uniqueness constraints, but taking or dropping classes is not implemented yet.
+- Database replication, atomic enrollment, service discovery, and cluster monitoring remain future phases.
 - No test files are added, per project instruction.
