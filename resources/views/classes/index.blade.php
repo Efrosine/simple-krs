@@ -53,11 +53,11 @@
                                     <td class="whitespace-nowrap px-5 py-4 text-slate-300">{{ $course->day_of_week }}, {{ substr($course->starts_at, 0, 5) }}–{{ substr($course->ends_at, 0, 5) }}</td>
                                     <td class="px-5 py-4">{{ $course->credits }}</td>
                                     <td class="px-5 py-4"><span data-enrolled-count class="font-semibold">{{ $course->enrollments_count }}</span><span class="text-slate-500"> / {{ $course->capacity }} (tersisa <span data-remaining-seats>{{ $course->remaining_seats }}</span>)</span></td>
-                                    <td class="px-5 py-4">
+                                    <td class="px-5 py-4" data-course-action data-enrolled="{{ $course->enrollments->isNotEmpty() ? '1' : '0' }}" data-role="{{ auth()->user()->role }}">
                                         @if ($course->enrollments->isNotEmpty())
                                             <form method="POST" action="{{ route('classes.drop', $course) }}">@csrf @method('DELETE')<button class="rounded-lg border border-rose-800 px-3 py-2 text-rose-200 hover:bg-rose-950">Lepas</button></form>
                                         @elseif ($course->remaining_seats > 0 && auth()->user()->role === 'student')
-                                            <form method="POST" action="{{ route('classes.enroll', $course) }}">@csrf<input type="hidden" name="idempotency_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}"><button class="rounded-lg bg-sky-400 px-3 py-2 font-semibold text-slate-950 hover:bg-sky-300">Ambil kelas</button></form>
+                                            <form method="POST" action="{{ route('classes.enroll', $course) }}">@csrf<input type="hidden" name="idempotency_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}"><button data-enroll-button class="rounded-lg bg-sky-400 px-3 py-2 font-semibold text-slate-950 hover:bg-sky-300">Ambil kelas</button></form>
                                         @elseif ($course->remaining_seats < 1)
                                             <span class="text-xs text-rose-300">Penuh</span>
                                         @else
@@ -87,10 +87,22 @@
                     document.querySelectorAll('[data-remaining-seats]').forEach((seat) => sum += Number(seat.textContent));
                     total.textContent = sum;
                 }
-                if (payload.remaining_seats < 1) {
-                    row.querySelectorAll('form[action*="/enroll"] button').forEach((button) => {
-                        if (button.textContent.trim() === 'Ambil kelas') button.disabled = true;
-                    });
+                const actionCell = row.querySelector('[data-course-action]');
+                if (actionCell && actionCell.dataset.enrolled !== '1' && actionCell.dataset.role === 'student') {
+                    const enrollButton = actionCell.querySelector('button[data-enroll-button]');
+                    if (payload.remaining_seats < 1) {
+                        if (enrollButton) {
+                            enrollButton.disabled = true;
+                            enrollButton.textContent = 'Penuh';
+                            enrollButton.className = 'cursor-not-allowed rounded-lg border border-rose-800 px-3 py-2 text-rose-300 opacity-80';
+                        } else {
+                            actionCell.innerHTML = '<span class="text-xs text-rose-300">Penuh</span>';
+                        }
+                    } else if (enrollButton) {
+                        enrollButton.disabled = false;
+                        enrollButton.textContent = 'Ambil kelas';
+                        enrollButton.className = 'rounded-lg bg-sky-400 px-3 py-2 font-semibold text-slate-950 hover:bg-sky-300';
+                    }
                 }
             });
         }
