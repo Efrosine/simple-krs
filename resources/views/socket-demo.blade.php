@@ -102,22 +102,27 @@
             }
         });
 
-        if (window.Echo) {
-            const connection = window.Echo.connector.pusher.connection;
-            connection.bind('connected', () => setConnectionStatus(true));
-            connection.bind('disconnected', () => setConnectionStatus(false));
-            connection.bind('unavailable', () => setConnectionStatus(false));
-            connection.bind('error', () => setConnectionStatus(false));
-            setConnectionStatus(connection.state === 'connected');
+       function initializeEcho() {
+    if (!window.Echo) {
+        setTimeout(initializeEcho, 100);
+        return;
+    }
 
-            window.Echo.channel('demo').listen('.demo.message', (payload) => {
-                addEvent(payload);
-            });
-        } else {
-            setConnectionStatus(false);
-            statusEl.textContent = 'Konfigurasi Vite belum tersedia';
-            sendStatus.textContent = 'Pastikan VITE_REVERB_APP_KEY terisi di .env lalu jalankan npm run dev atau npm run build.';
-        }
+    const connection = window.Echo.connector.pusher.connection;
+
+    connection.bind('connected', () => setConnectionStatus(true));
+    connection.bind('disconnected', () => setConnectionStatus(false));
+    connection.bind('unavailable', () => setConnectionStatus(false));
+    connection.bind('error', () => setConnectionStatus(false));
+
+    setConnectionStatus(connection.state === 'connected');
+
+    window.Echo.channel('demo').listen('.demo.message', (payload) => {
+        addEvent(payload);
+    });
+}
+
+initializeEcho();
     </script>
 </body>
 </html>
