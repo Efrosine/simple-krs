@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Course;
 use App\Models\Enrollment;
-use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
@@ -15,7 +14,7 @@ class ClassCatalogController extends Controller
         try {
             // Catalog counts may be eventually consistent, so read them from the replica.
             $courses = $this->catalogQuery('pgsql_replica')->get();
-        } catch (QueryException $exception) {
+        } catch (\Throwable $exception) {
             // A failed replica must not make the catalog unavailable.
             Log::warning('PostgreSQL replica unavailable; serving catalog from primary.', [
                 'exception' => $exception::class,
