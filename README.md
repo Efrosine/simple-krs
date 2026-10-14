@@ -68,6 +68,15 @@ These credentials are for local development only. Do not use them in a deployed 
 - Drop an enrolled class. Confirm the remaining seat becomes available again.
 - No test files are added, per project instruction.
 
+### Phase 4 manual verification
+
+- Set `KRS_MAX_CREDITS=24` in `.env` (or choose a lower limit for a quicker check), then refresh Laravel config if config caching is enabled.
+- Enroll in classes until the next class would exceed the SKS limit. The request should be rejected with a clear explanation.
+- Try enrolling in two classes on the same day with overlapping times. The second request should be rejected and name the conflicting class.
+- Try classes on the same day with non-overlapping times. They should be allowed if capacity and the credit limit permit it.
+- Drop a class, then confirm its credits no longer count toward the student's SKS total.
+- Check the behavior using PostgreSQL for row-lock and concurrent-request verification. SQLite does not prove PostgreSQL row-lock behavior.
+
 ### Scope limits
 
 The enrollment transaction protects capacity on a single database connection that supports row-level locking. SQLite is suitable for local feature checks, but does not provide the same row-locking behavior as PostgreSQL or MySQL. Distributed database replication and cross-node consistency remain future phases.
