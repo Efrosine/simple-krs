@@ -79,7 +79,7 @@ These credentials are for local development only. Do not use them in a deployed 
 
 ### Scope limits
 
-The enrollment transaction protects capacity on a single database connection that supports row-level locking. SQLite is suitable for local feature checks, but does not provide the same row-locking behavior as PostgreSQL or MySQL. Distributed database replication and cross-node consistency remain future phases.
+The enrollment transaction protects capacity on a single database connection that supports row-level locking. SQLite is suitable for local feature checks, but does not provide the same row-locking behavior as PostgreSQL or MySQL. PostgreSQL replication and read/write consistency are covered in Phase 5 and must be verified with the dedicated primary/replica setup.
 
 
 ## Phase 5: PostgreSQL primary and replica
