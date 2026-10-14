@@ -9,25 +9,36 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class EnrollmentController extends Controller
 {
     public function store(Request $request, Course $course): RedirectResponse
     {
-        $key = (string) Str::uuid();
+        abort_unless($request->user()->role === 'student', 403);
+
+        $validated = $request->validate([
+            'idempotency_key' => ['required', 'uuid'],
+        ]);
+        $key = $validated['idempotency_key'];
+
+        $replayed = Enrollment::query()->where('idempotency_key', $key)->first();
+        if ($replayed) {
+            if ($replayed->user_id !== $request->user()->id || $replayed->course_id !== $course->id) {
+                abort(409, 'Kunci permintaan sudah digunakan untuk operasi lain.');
+            }
+
+            return back()->with('status', 'Kelas sudah tercatat pada permintaan sebelumnya.');
+        }
 
         try {
-            $enrollment = DB::transaction(function () use ($request, $course, $key) {
+            DB::transaction(function () use ($request, $course, $key) {
                 $lockedCourse = Course::query()->whereKey($course->id)->lockForUpdate()->firstOrFail();
 
-                $existing = Enrollment::query()
+                if (Enrollment::query()
                     ->where('user_id', $request->user()->id)
                     ->where('course_id', $lockedCourse->id)
-                    ->first();
-
-                if ($existing) {
+                    ->exists()) {
                     throw ValidationException::withMessages([
                         'enrollment' => 'Kamu sudah mengambil kelas ini.',
                     ]);
@@ -43,33 +54,35 @@ class EnrollmentController extends Controller
                     ]);
                 }
 
-                return Enrollment::create([
+                Enrollment::create([
                     'user_id' => $request->user()->id,
                     'course_id' => $lockedCourse->id,
                     'idempotency_key' => $key,
                 ]);
             }, attempts: 3);
         } catch (QueryException $exception) {
-            if (str_contains($exception->getMessage(), 'enrollments_user_id_course_id_unique')) {
+            $message = $exception->getMessage();
+            $isUniqueViolation = in_array((string) $exception->getCode(), ['23000', '23505', '19'], true)
+                || str_contains($message, 'UNIQUE constraint failed');
+
+            if ($isUniqueViolation) {
                 throw ValidationException::withMessages([
-                    'enrollment' => 'Kamu sudah mengambil kelas ini.',
+                    'enrollment' => 'Kelas sudah diambil atau permintaan yang sama sudah diproses. Muat ulang halaman untuk melihat status terbaru.',
                 ]);
             }
 
             throw $exception;
         }
 
-        broadcast(new EnrollmentChanged(
-            courseId: $course->id,
-            enrolledCount: Enrollment::where('course_id', $course->id)->count(),
-            capacity: $course->capacity,
-        ))->toOthers();
+        $this->broadcastCapacity($course);
 
         return back()->with('status', 'Berhasil mengambil kelas.');
     }
 
     public function destroy(Request $request, Course $course): RedirectResponse
     {
+        abort_unless($request->user()->role === 'student', 403);
+
         $deleted = DB::transaction(function () use ($request, $course) {
             Course::query()->whereKey($course->id)->lockForUpdate()->firstOrFail();
 
@@ -85,12 +98,17 @@ class EnrollmentController extends Controller
             ]);
         }
 
+        $this->broadcastCapacity($course);
+
+        return back()->with('status', 'Berhasil melepas kelas.');
+    }
+
+    private function broadcastCapacity(Course $course): void
+    {
         broadcast(new EnrollmentChanged(
             courseId: $course->id,
             enrolledCount: Enrollment::where('course_id', $course->id)->count(),
             capacity: $course->capacity,
-        ))->toOthers();
-
-        return back()->with('status', 'Berhasil melepas kelas.');
+        ));
     }
 }
