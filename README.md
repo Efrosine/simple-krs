@@ -100,7 +100,6 @@ DB_READ_HOST=127.0.0.1
 DB_READ_PORT=5433
 DB_READ_USERNAME=postgres
 DB_READ_PASSWORD=your-replica-password
-DB_READ_TIMEOUT=2
 ```
 
 Adjust hostnames and ports to match the Docker network. When Laravel runs in a container attached to `db-net`, use the service name and internal port (for example `postgres:5432` and `postgres-replica:5432`), not the host-published ports.
