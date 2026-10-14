@@ -10,6 +10,10 @@ Phase 1 adds Laravel Reverb, Laravel Echo, and a small public-channel demo at `/
 
 Phase 2 adds session-based login, student registration, a basic admin role, a seeded class catalog, and the initial relational schema for enrollments.
 
+## Phase 3: Atomic enrollment
+
+Phase 3 adds taking and dropping classes, row locking within database transactions, unique constraints against duplicate enrollment, and a public Reverb event for live capacity updates.
+
 ### Requirements
 
 - PHP 8.3+
@@ -22,7 +26,7 @@ Phase 2 adds session-based login, student registration, a basic admin role, a se
 ```bash
 git clone https://github.com/Efrosine/simple-krs.git
 cd simple-krs
-git switch feature/phase-2-auth-catalog
+git switch feature/phase-3-atomic-enrollment
 composer install
 composer update laravel/reverb
 npm install
@@ -32,7 +36,7 @@ php artisan migrate --seed
 npm run build
 ```
 
-If the local `.env` already exists from Phase 1, keep it and do not overwrite it. Keep the Reverb settings from that phase if you want to use `/socket-demo`.
+If the local `.env` already exists from earlier phases, keep it and do not overwrite it. Keep the Reverb settings to use WebSocket updates.
 
 Run the app:
 
@@ -44,8 +48,6 @@ Visit `http://localhost:8000` (or the URL printed by Laravel).
 
 ### Demo accounts
 
-The seeder creates local-only demo accounts:
-
 | Role | Email | Password |
 |---|---|---|
 | Admin | `admin@simple-krs.test` | `password` |
@@ -53,11 +55,15 @@ The seeder creates local-only demo accounts:
 
 These credentials are for local development only. Do not use them in a deployed environment.
 
-### Phase 2 scope
+### Phase 3 manual verification
 
-- New registrations are always assigned the `student` role.
-- The admin dashboard is protected by a role check.
-- The class catalog shows schedule, lecturer, credits, capacity, and remaining seats.
-- Enrollment tables are prepared with uniqueness constraints, but taking or dropping classes is not implemented yet.
-- Database replication, atomic enrollment, service discovery, and cluster monitoring remain future phases.
+- Log in as a student and take a class. Confirm remaining seats decreases by one.
+- Take the same class again. The application should reject the duplicate.
+- Log in as another student and try a class after its capacity is reached. The application should reject the request.
+- Open the catalog in two browser sessions. Enrollment changes should update the seat counts through Reverb.
+- Drop an enrolled class. Confirm the remaining seat becomes available again.
 - No test files are added, per project instruction.
+
+### Scope limits
+
+The enrollment transaction protects capacity on a single database connection that supports row-level locking. SQLite is suitable for local feature checks, but does not provide the same row-locking behavior as PostgreSQL or MySQL. Distributed database replication and cross-node consistency remain future phases.

@@ -11,6 +11,7 @@ class ClassCatalogController extends Controller
     {
         $courses = Course::query()
             ->withCount('enrollments')
+            ->with(['enrollments' => fn ($query) => $query->where('user_id', auth()->id())])
             ->orderBy('day_of_week')
             ->orderBy('starts_at')
             ->orderBy('course_code')

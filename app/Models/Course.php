@@ -28,6 +28,6 @@ class Course extends Model
 
     public function getRemainingSeatsAttribute(): int
     {
-        return max(0, $this->capacity - (int) $this->enrollments_count);
+        return max(0, $this->capacity - (int) ($this->enrollments_count ?? $this->enrollments()->count()));
     }
 }
