@@ -1,16 +1,16 @@
 <?php
 
-namespace App\\Http\\Controllers;
+namespace App\Http\Controllers;
 
-use App\\Events\\EnrollmentChanged;
-use App\\Models\\Course;
-use App\\Models\\Enrollment;
-use App\\Models\\User;
-use Illuminate\\Database\\QueryException;
-use Illuminate\\Http\\RedirectResponse;
-use Illuminate\\Http\\Request;
-use Illuminate\\Support\\Facades\\DB;
-use Illuminate\\Validation\\ValidationException;
+use App\Events\EnrollmentChanged;
+use App\Models\Course;
+use App\Models\Enrollment;
+use App\Models\User;
+use Illuminate\Database\QueryException;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class EnrollmentController extends Controller
 {

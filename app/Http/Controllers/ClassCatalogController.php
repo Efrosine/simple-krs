@@ -1,9 +1,9 @@
 <?php
 
-namespace App\\Http\\Controllers;
+namespace App\Http\Controllers;
 
-use App\\Models\\Course;
-use Illuminate\\View\\View;
+use App\Models\Course;
+use Illuminate\View\View;
 
 class ClassCatalogController extends Controller
 {
