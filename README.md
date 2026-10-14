@@ -14,6 +14,10 @@ Phase 2 adds session-based login, student registration, a basic admin role, a se
 
 Phase 3 adds taking and dropping classes, row locking within database transactions, unique constraints against duplicate enrollment, and a public Reverb event for live capacity updates.
 
+## Phase 4: KRS validation
+
+Phase 4 enforces a configurable maximum credit load (24 SKS by default), rejects overlapping class schedules, and serializes KRS changes per student inside database transactions. Set `KRS_MAX_CREDITS` in `.env` to override the default limit. The catalog displays the student's current credit total.
+
 ### Requirements
 
 - PHP 8.3+
@@ -26,7 +30,7 @@ Phase 3 adds taking and dropping classes, row locking within database transactio
 ```bash
 git clone https://github.com/Efrosine/simple-krs.git
 cd simple-krs
-git switch feature/phase-3-atomic-enrollment
+git switch feature/phase-4-krs-validation
 composer install
 composer update laravel/reverb
 npm install

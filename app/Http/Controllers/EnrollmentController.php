@@ -1,15 +1,16 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\\Http\\Controllers;
 
-use App\Events\EnrollmentChanged;
-use App\Models\Course;
-use App\Models\Enrollment;
-use Illuminate\Database\QueryException;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
+use App\\Events\\EnrollmentChanged;
+use App\\Models\\Course;
+use App\\Models\\Enrollment;
+use App\\Models\\User;
+use Illuminate\\Database\\QueryException;
+use Illuminate\\Http\\RedirectResponse;
+use Illuminate\\Http\\Request;
+use Illuminate\\Support\\Facades\\DB;
+use Illuminate\\Validation\\ValidationException;
 
 class EnrollmentController extends Controller
 {
@@ -33,6 +34,9 @@ class EnrollmentController extends Controller
 
         try {
             DB::transaction(function () use ($request, $course, $key) {
+                // Serialize KRS changes for the same student so concurrent requests
+                // cannot bypass the SKS limit or schedule-conflict checks.
+                User::query()->whereKey($request->user()->id)->lockForUpdate()->firstOrFail();
                 $lockedCourse = Course::query()->whereKey($course->id)->lockForUpdate()->firstOrFail();
 
                 if (Enrollment::query()
@@ -52,6 +56,31 @@ class EnrollmentController extends Controller
                     throw ValidationException::withMessages([
                         'enrollment' => 'Kuota kelas sudah penuh.',
                     ]);
+                }
+
+                $currentCourses = Course::query()
+                    ->whereHas('enrollments', fn ($query) => $query->where('user_id', $request->user()->id))
+                    ->get();
+
+                $currentCredits = (int) $currentCourses->sum('credits');
+                $maxCredits = (int) config('krs.max_credits', 24);
+
+                if ($currentCredits + $lockedCourse->credits > $maxCredits) {
+                    throw ValidationException::withMessages([
+                        'enrollment' => "Batas maksimal KRS adalah {$maxCredits} SKS. Saat ini kamu mengambil {$currentCredits} SKS; kelas ini akan membuat total menjadi ".($currentCredits + $lockedCourse->credits).' SKS.',
+                    ]);
+                }
+
+                foreach ($currentCourses as $currentCourse) {
+                    if (
+                        $currentCourse->day_of_week === $lockedCourse->day_of_week
+                        && $currentCourse->starts_at < $lockedCourse->ends_at
+                        && $currentCourse->ends_at > $lockedCourse->starts_at
+                    ) {
+                        throw ValidationException::withMessages([
+                            'enrollment' => "Jadwal kelas {$lockedCourse->course_code} bentrok dengan {$currentCourse->course_code}.",
+                        ]);
+                    }
                 }
 
                 Enrollment::create([
@@ -84,6 +113,8 @@ class EnrollmentController extends Controller
         abort_unless($request->user()->role === 'student', 403);
 
         $deleted = DB::transaction(function () use ($request, $course) {
+            // Keep the same lock order as store() to serialize this student's KRS changes.
+            User::query()->whereKey($request->user()->id)->lockForUpdate()->firstOrFail();
             Course::query()->whereKey($course->id)->lockForUpdate()->firstOrFail();
 
             return Enrollment::query()

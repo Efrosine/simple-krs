@@ -10,7 +10,7 @@
     <main class="mx-auto max-w-6xl px-5 py-10 sm:py-14">
         <header class="flex flex-wrap items-center justify-between gap-4">
             <div>
-                <p class="text-xs font-semibold uppercase tracking-[.25em] text-sky-300">Simple KRS · Fase 03</p>
+                <p class="text-xs font-semibold uppercase tracking-[.25em] text-sky-300">Simple KRS · Fase 04</p>
                 <h1 class="mt-2 text-3xl font-semibold tracking-tight">Katalog kelas</h1>
                 <p class="mt-2 text-sm text-slate-400">Halo, {{ auth()->user()->name }}. Kuota diperbarui melalui event WebSocket.</p>
             </div>
@@ -30,9 +30,10 @@
             <div class="mt-6 rounded-lg border border-rose-800 bg-rose-950/40 px-4 py-3 text-sm text-rose-200">{{ $errors->first('enrollment') }}</div>
         @endif
 
-        <section class="mt-8 grid gap-4 sm:grid-cols-3">
+        <section class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div class="rounded-xl border border-slate-800 bg-slate-900 p-4"><p class="text-sm text-slate-400">Total kelas</p><p class="mt-2 text-2xl font-semibold">{{ $courses->count() }}</p></div>
             <div class="rounded-xl border border-slate-800 bg-slate-900 p-4"><p class="text-sm text-slate-400">Kursi tersedia</p><p id="total-remaining-seats" class="mt-2 text-2xl font-semibold">{{ $courses->sum('remaining_seats') }}</p></div>
+            <div class="rounded-xl border border-slate-800 bg-slate-900 p-4"><p class="text-sm text-slate-400">SKS KRS saya</p><p class="mt-2 text-2xl font-semibold">{{ $currentCredits }} <span class="text-sm font-normal text-slate-400">/ {{ $maxCredits }} SKS</span></p></div>
             <div class="rounded-xl border border-slate-800 bg-slate-900 p-4"><p class="text-sm text-slate-400">Peran akun</p><p class="mt-2 text-2xl font-semibold capitalize">{{ auth()->user()->role }}</p></div>
         </section>
 

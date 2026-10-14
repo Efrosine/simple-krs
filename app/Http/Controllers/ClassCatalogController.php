@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\\Http\\Controllers;
 
-use App\Models\Course;
-use Illuminate\View\View;
+use App\\Models\\Course;
+use Illuminate\\View\\View;
 
 class ClassCatalogController extends Controller
 {
@@ -17,6 +17,11 @@ class ClassCatalogController extends Controller
             ->orderBy('course_code')
             ->get();
 
-        return view('classes.index', compact('courses'));
+        $currentCredits = (int) $courses
+            ->filter(fn ($course) => $course->enrollments->isNotEmpty())
+            ->sum('credits');
+        $maxCredits = (int) config('krs.max_credits', 24);
+
+        return view('classes.index', compact('courses', 'currentCredits', 'maxCredits'));
     }
 }
