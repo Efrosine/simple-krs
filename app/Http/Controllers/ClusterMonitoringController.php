@@ -36,6 +36,21 @@ class ClusterMonitoringController extends Controller
         $url = rtrim((string) ($peer['url'] ?? ''), '/') . '/api/node';
         $startedAt = microtime(true);
 
+        // The current request already proves this application node is serving
+        // traffic. Do not make a synchronous HTTP request back into the same
+        // single-worker PHP server, which can only respond after this request
+        // finishes and would otherwise time out.
+        if ($nodeId === (string) config('node.id')) {
+            return [
+                'id' => $nodeId,
+                'status' => 'healthy',
+                'hostname' => gethostname() ?: null,
+                'reported_node_id' => config('node.id'),
+                'duration_ms' => 0,
+                'checked_at' => now()->toIso8601String(),
+            ];
+        }
+
         try {
             // Separate connection timeout from total request timeout so network
             // setup failures can be distinguished from a slow health endpoint.
