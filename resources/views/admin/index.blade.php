@@ -91,6 +91,8 @@
                         const details = [];
                         if (node.reported_node_id && node.reported_node_id !== node.id) details.push('ID dilaporkan: ' + node.reported_node_id);
                         if (node.hostname) details.push('Hostname: ' + node.hostname);
+                        if (node.error) details.push('Alasan: ' + node.error);
+                        if (Number.isFinite(Number(node.duration_ms))) details.push('Durasi probe: ' + node.duration_ms + ' ms');
                         details.push('Diperiksa: ' + new Date(node.checked_at).toLocaleTimeString());
                         nodes.append(makeCard(node.id, node.status, details));
                     });
@@ -118,8 +120,17 @@
                 }
             }
 
-            refreshClusterStatus();
-            window.setInterval(refreshClusterStatus, 5000);
+            // Schedule the next poll only after the current request settles. This
+            // prevents overlapping requests from racing to update the dashboard.
+            async function pollClusterStatus() {
+                try {
+                    await refreshClusterStatus();
+                } finally {
+                    window.setTimeout(pollClusterStatus, 5000);
+                }
+            }
+
+            pollClusterStatus();
         </script>
     </main>
 </body>
