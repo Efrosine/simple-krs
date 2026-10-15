@@ -13,6 +13,15 @@ Route::get('/', function () {
 
 Route::view('/socket-demo', 'socket-demo')->name('socket-demo');
 
+Route::get('/api/node', function () {
+    return response()->json([
+        'node_id' => config('node.id', 'local-node'),
+        'hostname' => gethostname() ?: null,
+        'status' => 'ok',
+        'checked_at' => now()->toIso8601String(),
+    ]);
+})->name('node.info');
+
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->name('login.store');
