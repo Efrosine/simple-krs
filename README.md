@@ -180,7 +180,7 @@ The admin dashboard at `/admin` now includes a live cluster-monitoring panel. It
 - PostgreSQL Replica connectivity, detected recovery role, and the byte difference between received and replayed WAL when available.
 - The last successful monitoring refresh time.
 
-The node list uses Docker DNS service names rather than fixed container IPs. The default list is `app-1=http://app-1:8000,app-2=http://app-2:8000,app-3=http://app-3:8000`. Override it in the infrastructure Compose environment with `APP_CLUSTER_NODES` if the service names or number of nodes differ. Example:
+The node list uses Docker DNS service names rather than fixed container IPs. Probes use a one-second connection timeout and a three-second total timeout. Failed probes include a safe reason and duration in the dashboard, while Laravel logs record the underlying exception or HTTP status for diagnosis. Dashboard polling schedules the next request only after the current one finishes, preventing overlapping refreshes. These changes improve diagnosis and reduce false alarms, but do not replace checking the underlying network if probes continue to fail. The default list is `app-1=http://app-1:8000,app-2=http://app-2:8000,app-3=http://app-3:8000`. Override it in the infrastructure Compose environment with `APP_CLUSTER_NODES` if the service names or number of nodes differ. Example:
 
 ```dotenv
 APP_CLUSTER_NODES=app-1=http://app-1:8000,app-2=http://app-2:8000,app-3=http://app-3:8000
