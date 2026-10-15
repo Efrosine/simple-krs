@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClassCatalogController;
+use App\Http\Controllers\ClusterMonitoringController;
 use App\Http\Controllers\EnrollmentController;
 use App\Events\DemoMessage;
 use Illuminate\Http\Request;
@@ -31,7 +32,8 @@ Route::middleware('guest')->group(function () {
 
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
-    Route::get('/classes', [ClassCatalogController::class, 'index'])->name('classes.index');\n    Route::get('/admin/cluster-status', [ClusterMonitoringController::class, 'status'])->name('admin.cluster-status');
+    Route::get('/classes', [ClassCatalogController::class, 'index'])->name('classes.index');
+    Route::get('/admin/cluster-status', [ClusterMonitoringController::class, 'status'])->name('admin.cluster-status');
     Route::post('/classes/{course}/enroll', [EnrollmentController::class, 'store'])->name('classes.enroll');
     Route::delete('/classes/{course}/enroll', [EnrollmentController::class, 'destroy'])->name('classes.drop');
 
