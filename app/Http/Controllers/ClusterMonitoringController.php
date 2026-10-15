@@ -44,6 +44,7 @@ class ClusterMonitoringController extends Controller
             return [
                 'id' => $nodeId,
                 'status' => 'healthy',
+                'is_active' => true,
                 'hostname' => gethostname() ?: null,
                 'reported_node_id' => config('node.id'),
                 'duration_ms' => 0,
@@ -71,6 +72,7 @@ class ClusterMonitoringController extends Controller
                 return [
                     'id' => $nodeId,
                     'status' => 'unhealthy',
+                    'is_active' => false,
                     'hostname' => $payload['hostname'] ?? null,
                     'reported_node_id' => $payload['node_id'] ?? null,
                     'error' => $error,
@@ -88,6 +90,7 @@ class ClusterMonitoringController extends Controller
                 return [
                     'id' => $nodeId,
                     'status' => 'unhealthy',
+                    'is_active' => false,
                     'hostname' => is_array($payload) ? ($payload['hostname'] ?? null) : null,
                     'reported_node_id' => is_array($payload) ? ($payload['node_id'] ?? null) : null,
                     'error' => $error,
@@ -99,6 +102,7 @@ class ClusterMonitoringController extends Controller
             return [
                 'id' => $nodeId,
                 'status' => 'healthy',
+                'is_active' => false,
                 'hostname' => $payload['hostname'] ?? null,
                 'reported_node_id' => $payload['node_id'] ?? null,
                 'duration_ms' => $durationMs,
@@ -115,6 +119,7 @@ class ClusterMonitoringController extends Controller
             return [
                 'id' => $nodeId,
                 'status' => 'unhealthy',
+                'is_active' => false,
                 'hostname' => null,
                 'error' => $error,
                 'duration_ms' => $durationMs,
