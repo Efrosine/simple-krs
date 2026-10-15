@@ -122,27 +122,51 @@ The catalog falls back to the primary if the replica query fails and logs a warn
 - Start the replica again and confirm streaming replication resumes.
 - No test files are added, per project instruction.
 
-## Phase 6: Application node identity and service discovery
+## Phase 6: Application node identity, Docker, and service discovery
 
-Phase 6 prepares the Laravel app to run behind a service-discovery-aware load balancer. Each application instance has a configurable `APP_NODE_ID` (falling back to the container hostname), adds its identity to the `X-App-Node` response header, and includes `app_node` in Laravel log context. HTTP requests are logged with method, path, and response status, without logging request bodies or credentials.
+Phase 6 adds a Docker image for Laravel, configurable application-node identity, an `X-App-Node` response header, request log context, and an unauthenticated `/api/node` endpoint for inspecting the instance serving a request.
 
-The `/api/node` endpoint returns the current instance identity and a simple status payload. Laravel's built-in `/up` endpoint is the health-check endpoint for the load balancer. The Docker Compose and load-balancer configuration are kept outside this repository; use Docker service DNS rather than fixed container IP addresses.
+The `Dockerfile` uses a multi-stage build for Vite assets and PHP dependencies. It installs the PostgreSQL PDO extension and runs Laravel's built-in HTTP server on port 8000. This is intended for the local multi-container learning environment, not as a recommendation to use PHP's built-in server for a production deployment.
 
-For each application instance, set a unique value such as:
+Keep the infrastructure Compose outside this repository. The intended local topology is three Laravel containers, a dedicated Traefik container using the Docker provider, and the existing PostgreSQL Primary/Replica services. Traefik discovers app containers through Docker labels instead of a manually maintained list of container IPs. If the existing Traefik already owns host port 80, publish the dedicated Simple KRS Traefik on a different host port, such as 8081.
 
-```dotenv
-APP_NODE_ID=app-1
+Build the app image from the repository directory:
+
+```bash
+docker build -t simple-krs:phase6 .
 ```
 
-All app instances must share the same `APP_KEY`, session backend, database configuration, and relevant Reverb settings. Do not generate a different application key for each node, or encrypted sessions/cookies will not be compatible between instances.
+Each application instance must have a unique `APP_NODE_ID`, while sharing the same `APP_KEY`, database, session backend, and relevant broadcast configuration. For example, use `app-1`, `app-2`, and `app-3`. Never generate a separate `APP_KEY` for each node.
+
+When app containers share the PostgreSQL Compose network, configure database connections using Docker service names and internal ports:
+
+```dotenv
+DB_CONNECTION=pgsql
+DB_HOST=postgres
+DB_PORT=5432
+DB_DATABASE=simple_krs
+DB_USERNAME=krs_admin
+DB_PASSWORD=your-primary-password
+DB_READ_HOST=postgres-replica
+DB_READ_PORT=5432
+DB_READ_USERNAME=krs_admin
+DB_READ_PASSWORD=your-primary-password
+```
+
+The exact external Docker network names must match the networks actually created by the database and existing infrastructure Compose projects. Do not use host-published PostgreSQL ports from one container to connect to another container on the same Docker network.
+
+Run migrations and seeders once against the Primary, not independently on each application node. For a fresh development database only, `php artisan migrate:fresh --seed` is destructive and drops existing tables.
+
+The `/api/node` endpoint returns node identity and hostname. The global middleware adds `X-App-Node` to HTTP responses and records the node ID, method, path, and response status in logs. Laravel's `/up` endpoint is available as a health-check endpoint.
 
 ### Phase 6 manual verification
 
-- Run at least two app instances behind the load balancer and configure a unique `APP_NODE_ID` for each.
-- Request `/api/node` repeatedly through the load balancer. The JSON `node_id` and `X-App-Node` header should show which instance served each request.
-- Request `/up` to confirm the health-check endpoint returns a successful response while the instance is healthy.
-- Inspect Laravel logs and confirm each request includes the corresponding `app_node`, method, path, and status.
-- Stop one app instance. The load balancer should stop routing new requests to it after its health check fails; other healthy instances should continue serving requests.
-- Restart the instance and confirm it returns to service after becoming healthy.
-- Use Docker service names for service-to-service connections; do not hard-code container IP addresses.
+- Build the image successfully with `docker build -t simple-krs:phase6 .`.
+- Run three app containers with unique `APP_NODE_ID` values and shared application/database/session configuration.
+- Access `/api/node` through the dedicated Traefik address and inspect both the JSON node ID and `X-App-Node` response header.
+- Confirm requests are distributed among app instances.
+- Stop one app container and confirm Traefik stops sending new requests to the unhealthy instance while other instances remain available.
+- Restart the stopped instance and confirm it is discovered again.
+- Inspect container logs for the node identity, HTTP method, path, and response status.
+- Verify WebSocket/Reverb routing separately; HTTP load balancing alone does not make Reverb events shared across multiple Reverb servers.
 - No test files are added, per project instruction.
