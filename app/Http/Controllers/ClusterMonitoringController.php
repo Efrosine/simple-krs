@@ -50,7 +50,7 @@ class ClusterMonitoringController extends Controller
     {
         try {
             $connection = DB::connection('pgsql');
-            $isReplica = (bool) $connection->selectOne('SELECT pg_is_in_recovery() AS value')->value;
+            $isReplica = filter_var($connection->selectOne('SELECT pg_is_in_recovery() AS value')->value, FILTER_VALIDATE_BOOLEAN);
 
             return [
                 'status' => $isReplica ? 'degraded' : 'healthy',
@@ -66,7 +66,7 @@ class ClusterMonitoringController extends Controller
     {
         try {
             $connection = DB::connection('pgsql_replica');
-            $isReplica = (bool) $connection->selectOne('SELECT pg_is_in_recovery() AS value')->value;
+            $isReplica = filter_var($connection->selectOne('SELECT pg_is_in_recovery() AS value')->value, FILTER_VALIDATE_BOOLEAN);
             $lag = $connection->selectOne(
                 'SELECT CASE WHEN pg_last_wal_receive_lsn() IS NULL OR pg_last_wal_replay_lsn() IS NULL THEN NULL ELSE pg_wal_lsn_diff(pg_last_wal_receive_lsn(), pg_last_wal_replay_lsn()) END AS lag_bytes'
             );
