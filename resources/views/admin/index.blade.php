@@ -94,7 +94,15 @@
                         if (node.error) details.push('Alasan: ' + node.error);
                         if (Number.isFinite(Number(node.duration_ms))) details.push('Durasi probe: ' + node.duration_ms + ' ms');
                         details.push('Diperiksa: ' + new Date(node.checked_at).toLocaleTimeString());
-                        nodes.append(makeCard(node.id, node.status, details));
+                        const card = makeCard(node.id, node.status, details);
+                        if (node.is_active) {
+                            const heading = card.querySelector('div');
+                            const activeBadge = document.createElement('span');
+                            activeBadge.className = 'rounded-full border border-sky-700 bg-sky-950/50 px-2 py-1 text-xs text-sky-200';
+                            activeBadge.textContent = 'Active';
+                            heading.append(activeBadge);
+                        }
+                        nodes.append(card);
                     });
                     if (!data.nodes.length) nodes.append(makeCard('Tidak ada node terkonfigurasi', 'unknown'));
 
