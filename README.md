@@ -170,3 +170,29 @@ The `/api/node` endpoint returns node identity and hostname. The global middlewa
 - Inspect container logs for the node identity, HTTP method, path, and response status.
 - Verify WebSocket/Reverb routing separately; HTTP load balancing alone does not make Reverb events shared across multiple Reverb servers.
 - No test files are added, per project instruction.
+
+## Phase 7: Cluster monitoring
+
+The admin dashboard at `/admin` now includes a live cluster-monitoring panel. It polls the admin-only `/admin/cluster-status` endpoint every five seconds and reports:
+
+- Application node health using each configured node's `/api/node` endpoint.
+- PostgreSQL Primary connectivity and detected recovery role.
+- PostgreSQL Replica connectivity, detected recovery role, and the byte difference between received and replayed WAL when available.
+- The last successful monitoring refresh time.
+
+The node list uses Docker DNS service names rather than fixed container IPs. The default list is `app-1=http://app-1:8000,app-2=http://app-2:8000,app-3=http://app-3:8000`. Override it in the infrastructure Compose environment with `APP_CLUSTER_NODES` if the service names or number of nodes differ. Example:
+
+```dotenv
+APP_CLUSTER_NODES=app-1=http://app-1:8000,app-2=http://app-2:8000,app-3=http://app-3:8000
+```
+
+This endpoint is restricted to authenticated admin accounts. An unreachable node or database is shown as unhealthy instead of hiding the failure. The dashboard currently does not report active Reverb/WebSocket connection counts or a cross-node event audit stream; those require a Reverb metrics source and shared event storage, and are not inferred from HTTP health checks.
+
+### Phase 7 manual verification
+
+- Open `/admin` using an admin account and confirm all three app nodes and both database connections are shown.
+- Stop one app container and confirm its card changes to unhealthy after the next poll; start it again and confirm recovery.
+- Stop the replica and confirm the replica card changes to unhealthy while the dashboard remains available through the primary.
+- Check that a student account receives HTTP 403 from `/admin/cluster-status`.
+- Confirm `APP_CLUSTER_NODES` uses internal service DNS names and no fixed IP addresses.
+
