@@ -30,7 +30,7 @@ Phase 4 enforces a configurable maximum credit load (24 SKS by default), rejects
 ```bash
 git clone https://github.com/Efrosine/simple-krs.git
 cd simple-krs
-git switch feature/phase-4-krs-validation
+git switch feature/phase-6-service-discovery
 composer install
 composer update laravel/reverb
 npm install
@@ -81,28 +81,27 @@ These credentials are for local development only. Do not use them in a deployed 
 
 The enrollment transaction protects capacity on a single database connection that supports row-level locking. SQLite is suitable for local feature checks, but does not provide the same row-locking behavior as PostgreSQL or MySQL. PostgreSQL replication and read/write consistency are covered in Phase 5 and must be verified with the dedicated primary/replica setup.
 
-
 ## Phase 5: PostgreSQL primary and replica
 
 Phase 5 keeps the default `pgsql` connection pointed at the primary. All enrollment transactions, session/cache/queue database operations, and other writes continue to use the primary. Only the class catalog's course list and enrollment counts use the dedicated `pgsql_replica` connection.
 
-For a local PostgreSQL replication demo, configure `.env`:
+For the dedicated local PostgreSQL Compose, configure Laravel's `.env` with the host-published ports:
 
 ```dotenv
 DB_CONNECTION=pgsql
 DB_HOST=127.0.0.1
-DB_PORT=5432
+DB_PORT=5433
 DB_DATABASE=simple_krs
-DB_USERNAME=postgres
+DB_USERNAME=krs_admin
 DB_PASSWORD=your-primary-password
 
 DB_READ_HOST=127.0.0.1
-DB_READ_PORT=5433
-DB_READ_USERNAME=postgres
-DB_READ_PASSWORD=your-replica-password
+DB_READ_PORT=5434
+DB_READ_USERNAME=krs_admin
+DB_READ_PASSWORD=your-primary-password
 ```
 
-Adjust hostnames and ports to match the Docker network. When Laravel runs in a container attached to `db-net`, use the service name and internal port (for example `postgres:5432` and `postgres-replica:5432`), not the host-published ports.
+When Laravel runs in a container on the same Docker network, use the service names and internal port 5432 instead of host-published ports.
 
 Run migrations and seeders against the primary only:
 
@@ -121,4 +120,29 @@ The catalog falls back to the primary if the replica query fails and logs a warn
 - Introduce a controlled replication delay and confirm catalog counts may lag while enrollment validation remains safe.
 - Stop the replica. The catalog should fall back to the primary; a warning should appear in the Laravel log.
 - Start the replica again and confirm streaming replication resumes.
+- No test files are added, per project instruction.
+
+## Phase 6: Application node identity and service discovery
+
+Phase 6 prepares the Laravel app to run behind a service-discovery-aware load balancer. Each application instance has a configurable `APP_NODE_ID` (falling back to the container hostname), adds its identity to the `X-App-Node` response header, and includes `app_node` in Laravel log context. HTTP requests are logged with method, path, and response status, without logging request bodies or credentials.
+
+The `/api/node` endpoint returns the current instance identity and a simple status payload. Laravel's built-in `/up` endpoint is the health-check endpoint for the load balancer. The Docker Compose and load-balancer configuration are kept outside this repository; use Docker service DNS rather than fixed container IP addresses.
+
+For each application instance, set a unique value such as:
+
+```dotenv
+APP_NODE_ID=app-1
+```
+
+All app instances must share the same `APP_KEY`, session backend, database configuration, and relevant Reverb settings. Do not generate a different application key for each node, or encrypted sessions/cookies will not be compatible between instances.
+
+### Phase 6 manual verification
+
+- Run at least two app instances behind the load balancer and configure a unique `APP_NODE_ID` for each.
+- Request `/api/node` repeatedly through the load balancer. The JSON `node_id` and `X-App-Node` header should show which instance served each request.
+- Request `/up` to confirm the health-check endpoint returns a successful response while the instance is healthy.
+- Inspect Laravel logs and confirm each request includes the corresponding `app_node`, method, path, and status.
+- Stop one app instance. The load balancer should stop routing new requests to it after its health check fails; other healthy instances should continue serving requests.
+- Restart the instance and confirm it returns to service after becoming healthy.
+- Use Docker service names for service-to-service connections; do not hard-code container IP addresses.
 - No test files are added, per project instruction.
