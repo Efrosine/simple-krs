@@ -52,8 +52,9 @@ COPY --from=dependencies /app/vendor ./vendor
 COPY . .
 COPY --from=frontend /app/public/build ./public/build
 
-RUN mkdir -p storage/framework/cache storage/framework/sessions \
-    storage/framework/views storage/logs bootstrap/cache \
+RUN php artisan package:discover --ansi \
+    && mkdir -p storage/framework/cache storage/framework/sessions \
+       storage/framework/views storage/logs bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R ug+rwX storage bootstrap/cache
 
