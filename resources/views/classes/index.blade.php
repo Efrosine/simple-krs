@@ -74,6 +74,25 @@
         </section>
     </main>
 
+    @php
+        $appNodeId = (string) config('node.id', 'local-node');
+        $nodeIndicatorClasses = match ($appNodeId) {
+            'app-1' => ['dot' => 'bg-emerald-400', 'pill' => 'border-emerald-700 bg-emerald-950/90 text-emerald-200'],
+            'app-2' => ['dot' => 'bg-sky-400', 'pill' => 'border-sky-700 bg-sky-950/90 text-sky-200'],
+            'app-3' => ['dot' => 'bg-violet-400', 'pill' => 'border-violet-700 bg-violet-950/90 text-violet-200'],
+            default => ['dot' => 'bg-amber-400', 'pill' => 'border-amber-700 bg-slate-900/95 text-amber-200'],
+        };
+    @endphp
+    <aside
+        aria-label="Application node"
+        title="Node aplikasi yang menangani request halaman ini"
+        class="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium shadow-lg backdrop-blur {{ $nodeIndicatorClasses['pill'] }}"
+    >
+        <span class="h-2 w-2 rounded-full {{ $nodeIndicatorClasses['dot'] }}"></span>
+        <span>Served by:</span>
+        <code class="font-mono font-bold">{{ $appNodeId }}</code>
+    </aside>
+
     <script type="module">
         if (window.Echo) {
             window.Echo.channel('course-capacity').listen('.enrollment.changed', (payload) => {
