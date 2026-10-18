@@ -19,7 +19,7 @@ COPY vite.config.js ./
 COPY public ./public
 RUN npm run build
 
-FROM php:8.3-cli-bookworm AS php-base
+FROM php:8.5-cli-bookworm AS php-base
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
